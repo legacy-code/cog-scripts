@@ -179,6 +179,7 @@ def main():
     function1 = generateCodeForStringToEnum( funcFromStringToEnum, "code", baseName, tupList )
     function2 = generateCodeForEnumToString( funcFromEnumToString, "code", baseName, tupList )
 
+    print function1
     print function2
 
 
