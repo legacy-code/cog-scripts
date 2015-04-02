@@ -66,7 +66,11 @@ def getEnumTuples( inDict ):
     return retList
 
 
+# -----================------
+
 def generateCodeForStringToEnum(funcName, arg, typeName, tupList):
+    ''' generate the code '''
+
     headerString = """+ (%s)%s:(NSString *)%s
 {
     """
@@ -88,14 +92,6 @@ def generateCodeForStringToEnum(funcName, arg, typeName, tupList):
 
 def genEnumIfPart( firstItem, typeName, arg, tup ):
     """
-    if ([code isEqualToString:@"C1"])
-    {
-        return TDAIRAContributionCodeC1;
-    }
-    else if ([code isEqualToString:@"C2"])
-    {
-        return TDAIRAContributionCodeC2;
-    }
     """
     retStr = ""
     formatStr = '''%sif ([%s isEqualToString:@"%s"])
@@ -111,6 +107,58 @@ def genEnumIfPart( firstItem, typeName, arg, tup ):
     retStr = (formatStr % (eClause, arg, tup[0], typeName, tup[0] ))
 
     return retStr
+
+# -----================------
+
+
+def generateCodeForEnumToString(funcName, arg, typeName, tupList):
+    '''
+    generate the code
+
+       switch (code) {
+        case TDAIRAContributionCodeC1:
+            return @"C1";
+    '''
+
+    headerString = """+ (NSString *)%s:(%s)%s
+{
+    switch (%s)
+    {
+    """
+
+    retStr = (headerString % (funcName, typeName, arg, arg))
+
+    firstItem = True
+    for tup in tupList:
+        retStr += genEnumCasePart(typeName, arg, tup)
+        if firstItem:
+            firstItem = False
+
+    retStr += """        default:
+            return @"--";
+    }
+    """
+
+    return retStr
+
+
+
+
+def genEnumCasePart( typeName, arg, tup ):
+    """
+    case TDAIRAContributionCodeC1:
+            return @"C1";
+    """
+    retStr = ""
+    formatStr = '''case %s%s:
+        return @"%s";
+    '''
+
+    retStr = (formatStr % (typeName, tup[0], tup[0] ))
+
+    return retStr
+
+# -----================------
 
 
 
@@ -129,8 +177,9 @@ def main():
     printIterable(tupList, "Tuple List for enum")
 
     function1 = generateCodeForStringToEnum( funcFromStringToEnum, "code", baseName, tupList )
+    function2 = generateCodeForEnumToString( funcFromEnumToString, "code", baseName, tupList )
 
-
+    print function2
 
 
 def printIterable( it, title ):
