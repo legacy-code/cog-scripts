@@ -123,7 +123,6 @@ class GenEnumCode( object ):
         return retStr
 
 
-
     # ----------
     def getFunctionHeaderStringForEnum(self, funcName):
         headerString = """+ (NSString *)%s:(%s)%s
@@ -223,7 +222,7 @@ def main( argv = None ):
     tg = tupGenerator( inFileName )
     tups = tg.getEnumTuples()
 
-    genCode = GenEnumCode( funcFromStringToEnum, "code", True )
+    genCode = GenEnumCode( tg.getEnumBaseName(), "code", True )
 
     function1 = genCode.generateCodeForStringToEnum(funcFromStringToEnum, tups)
     function2 = genCode.generateCodeForEnumToString(funcFromEnumToString, tups)
