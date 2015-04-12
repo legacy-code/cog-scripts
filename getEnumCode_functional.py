@@ -20,6 +20,7 @@ def openAndReturnFile( filename ):
     for line in file:
         lines.append(line.rstrip('\n').rstrip('\r').rstrip(','))
 
+    file.close()
     return lines
 
 
@@ -32,35 +33,29 @@ def myPrn(o):
 # -----================------
 
 
-def getEnumBaseName( inIter ):
-    '''
-    assumming a line that looks something like this:
-        typedef NS_ENUM(NSUInteger, TDAIRAContributionCode)
-    we will return the TDAIRAContributionCode as the base
-    :param inIter: iterable to look through
-    :return: a string
-    '''
-
-    retStr = filter(lambda x: x.find('NS_ENUM') > -1, inIter)
-    temp = retStr[0].split(',')
-    retStr = temp[1].replace(")", "").strip()
-    return retStr
-
-
 # ---------- class for generating a tuple from Obj-c enum ---------
 #    needed to allow a call from the map() function that has the
 #    base name we need.  Trick from C++
 #
 class tupGenerator(object):
-    def __init__(self, base ):
-        self.baseName = base
 
+    # ----------
+    def __init__(self, filename ):
+        ''' read in the file and do the appropriate thingss '''
+        self.lines = openAndReturnFile('test_input.txt')
+        #map(myPrn, self.lines)
+        self.baseName = self.getEnumBaseName()
 
+    # ----------
     def tupFromLine(self, line ):
-        if line.find(" = ") != -1:
-            strName = ""
-            idNum = ""
-            comment = ""
+        '''
+        line will look something like this:
+                TDAIRAContributionCodeC2 = 2,   // IRA Contribution Previous Year
+        will want to get each part -- assumes that have an ' = ' or it won't parse
+        '''
+        strName = ""
+        idNum = ""
+        comment = ""
 
         tupleList = line.split(" = ")
         strName = tupleList[0].replace(self.baseName, "").strip()
@@ -77,66 +72,43 @@ class tupGenerator(object):
 
         return (strName, idNum, comment)
 
-# ---------- ----------
+    # ----------
+    def getEnumTuples( self ):
+        retList = list()
 
-def getEnumTuples( inDict ):
-    retList = list()
+        lines = filter(lambda x: x.find(' = ') > -1, self.lines)
+        retList = map( self.tupFromLine, lines )
+        return retList
 
-    baseName = getEnumBaseName( inDict )
-    tg = tupGenerator( baseName )
-
-    lines = filter(lambda x: x.find(' = ') > -1, inDict)
-    retList = map( tg.tupFromLine, lines )
-    return retList
-
-
-# -----================------
-
-def generateCodeForStringToEnum(funcName, arg, typeName, tupList):
-    ''' generate the code '''
-
-    genCode = GenEnumCode( typeName, arg, True )
-    retStr = genCode.getFunctionHeaderStringToEnum(funcName)
-
-    codeList = map( genCode.genEnumIfPart, tupList )
-    retStr += reduce(lambda a, x: a + x, codeList, '' )
-
-    retStr += genCode.getFunctionTailToEnum()
-    return retStr
+    # ----------
+    def getEnumBaseName( self ):
+        '''
+        assumming a line that looks something like this:
+            typedef NS_ENUM(NSUInteger, TDAIRAContributionCode)
+        we will return the TDAIRAContributionCode as the base
+        :param inIter: iterable to look through
+        :return: a string
+        '''
+        retStr = filter(lambda x: x.find('NS_ENUM') > -1, self.lines)
+        temp = retStr[0].split(',')
+        retStr = temp[1].replace(")", "").strip()
+        return retStr
 
 
-# -----================------
-
-
-
-# -----================------
-
-
-def generateCodeForEnumToString(funcName, arg, typeName, tupList):
-    '''
-    generate the code
-    '''
-
-    genCode = GenEnumCode( typeName, arg, False )
-    retStr = genCode.getFunctionHeaderStringForEnum(funcName)
-
-    codeList = map( genCode.genEnumCasePart, tupList )
-    retStr += reduce(lambda a, x: a + x, codeList, '' )
-
-    retStr += genCode.getFunctionTailForEnum()
-    return retStr
 
 
 # -----================------
 
 class GenEnumCode( object ):
 
+    # ----------
     def __init__( self, typename, arg, firsttime ):
         self.typeName = typename
         self.firstItem = firsttime
         self.arg = arg
 
 
+    # ----------
     def getFunctionHeaderStringToEnum(self, funcName):
         headerString = """+ (%s)%s:(NSString *)%s
 {
@@ -145,12 +117,14 @@ class GenEnumCode( object ):
         retStr = (headerString % (self.typeName, funcName, self.arg))
         return retStr
 
+    # ----------
     def getFunctionTailToEnum(self):
         retStr = "}\n"
         return retStr
 
 
 
+    # ----------
     def getFunctionHeaderStringForEnum(self, funcName):
         headerString = """+ (NSString *)%s:(%s)%s
 {
@@ -161,6 +135,7 @@ class GenEnumCode( object ):
         retStr = (headerString % (funcName, self.typeName, self.arg, self.arg))
         return retStr
 
+    # ----------
     def getFunctionTailForEnum(self):
         retStr = """        default:
             return @"--";
@@ -169,6 +144,7 @@ class GenEnumCode( object ):
         return retStr
 
 
+    # ----------
     def genEnumCasePart( self, tup ):
         """
         case TDAIRAContributionCodeC1:
@@ -183,6 +159,7 @@ class GenEnumCode( object ):
 
         return retStr
 
+    # ----------
     def genEnumIfPart( self, tup ):
         """
         """
@@ -202,6 +179,32 @@ class GenEnumCode( object ):
 
         return retStr
 
+    # ----------
+    def generateCodeForStringToEnum(self, funcName, tupList):
+        ''' generate the code '''
+
+        retStr = self.getFunctionHeaderStringToEnum(funcName)
+
+        codeList = map( self.genEnumIfPart, tupList )
+        retStr += reduce(lambda a, x: a + x, codeList, '' )
+
+        retStr += self.getFunctionTailToEnum()
+        return retStr
+
+
+    # ----------
+    def generateCodeForEnumToString(self, funcName, tupList):
+        '''
+        generate the code
+        '''
+        retStr = self.getFunctionHeaderStringForEnum(funcName)
+
+        codeList = map( self.genEnumCasePart, tupList )
+        retStr += reduce(lambda a, x: a + x, codeList, '' )
+
+        retStr += self.getFunctionTailForEnum()
+        return retStr
+
 
 # -----================------
 
@@ -215,18 +218,15 @@ def main( argv = None ):
     funcFromStringToEnum = "contributionCodeFromString"
     funcFromEnumToString = "stringFromContributionCode"
 
-    lines = openAndReturnFile('test_input.txt')
-    map(myPrn, lines)
+    inFileName = 'test_input.txt'
 
-    baseName = getEnumBaseName(lines)
-    print "-- baseName -- ", baseName
+    tg = tupGenerator( inFileName )
+    tups = tg.getEnumTuples()
 
-    print "----- print tuples from obj-c enum -----"
-    tups = getEnumTuples(lines)
-    map(myPrn, tups)
+    genCode = GenEnumCode( funcFromStringToEnum, "code", True )
 
-    function1 = generateCodeForStringToEnum( funcFromStringToEnum, "code", baseName, tups )
-    function2 = generateCodeForEnumToString( funcFromEnumToString, "code", baseName, tups )
+    function1 = genCode.generateCodeForStringToEnum(funcFromStringToEnum, tups)
+    function2 = genCode.generateCodeForEnumToString(funcFromEnumToString, tups)
 
     print "\n\n----- function1 -----\n", function1
     print "\n\n----- function2 -----\n", function2
