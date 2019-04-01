@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # http://pastebin.com/4MjuSkW3
 # __author__ = 'unknown - in pastebin'

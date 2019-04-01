@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 
 input='''typedef NS_ENUM(NSUInteger, TDAIRAContributionCode)
